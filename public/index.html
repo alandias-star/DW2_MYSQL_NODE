@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web2 Loja</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      form,
+      .busca {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 0.5rem;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Produtos</h1>
+
+    <form id="form-produto">
+      <input type="text" name="nome" placeholder="Nome" required />
+      <input
+        type="number"
+        name="preco"
+        step="0.01"
+        min="0"
+        placeholder="Preço"
+        required
+      />
+      <input
+        type="number"
+        name="estoque"
+        min="0"
+        value="0"
+        placeholder="Estoque"
+        required
+      />
+      <button type="submit">Salvar</button>
+    </form>
+
+    <div class="busca">
+      <input type="text" id="campo-busca" placeholder="Buscar por nome ..." />
+      <button type="button" id="btn-buscar">Buscar</button>
+      <button type="button" id="btn-limpar">Limpar</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nome</th>
+          <th>Preço</th>
+          <th>Estoque</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="lista-produtos"></tbody>
+    </table>
+
+    <script>
+      const form = document.getElementById("form-produto");
+      const tbody = document.getElementById("lista-produtos");
+      const campoBusca = document.getElementById("campo-busca");
+      const btnBuscar = document.getElementById("btn-buscar");
+      const btnLimpar = document.getElementById("btn-limpar");
+
+      function formatarMoeda(valor) {
+        return Number(valor).toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        });
+      }
+
+      async function carregar(busca = "") {
+        const url = busca
+          ? `/produtos?busca=${encodeURIComponent(busca)}`
+          : "/produtos";
+
+        const resp = await fetch(url);
+        const produtos = await resp.json();
+
+        tbody.innerHTML = "";
+
+        for (const p of produtos) {
+          const tr = document.createElement("tr");
+
+          const tdId = document.createElement("td");
+          tdId.textContent = p.id;
+
+          const tdNome = document.createElement("td");
+          tdNome.textContent = p.nome;
+
+          const tdPreco = document.createElement("td");
+          tdPreco.textContent = formatarMoeda(p.preco);
+
+          const tdEstoque = document.createElement("td");
+          tdEstoque.textContent = p.estoque;
+
+          const tdAcoes = document.createElement("td");
+          const btnExcluir = document.createElement("button");
+          btnExcluir.type = "button";
+          btnExcluir.textContent = "Excluir";
+          btnExcluir.addEventListener("click", async () => {
+            const delResp = await fetch(`/produtos/${p.id}`, {
+              method: "DELETE",
+            });
+            if (delResp.ok) {
+              carregar(campoBusca.value.trim());
+            }
+          });
+          tdAcoes.append(btnExcluir);
+
+          tr.append(tdId, tdNome, tdPreco, tdEstoque, tdAcoes);
+          tbody.append(tr);
+        }
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const dados = Object.fromEntries(new FormData(form));
+        await fetch("/produtos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dados),
+        });
+        form.reset();
+        carregar(campoBusca.value.trim());
+      });
+
+      btnBuscar.addEventListener("click", () => {
+        carregar(campoBusca.value.trim());
+      });
+
+      btnLimpar.addEventListener("click", () => {
+        campoBusca.value = "";
+        carregar();
+      });
+
+      carregar();
+    </script>
+  </body>
+</html>
